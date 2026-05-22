@@ -2270,7 +2270,7 @@ footer {
             Take the Quiz
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
-          <span class="fp-cta-note">Free · 62 seconds</span>
+          <span class="fp-cta-note">only 62 seconds</span>
         </div>
 
       </div>
@@ -2614,12 +2614,32 @@ footer {
       </button>
     </div>
 
-    <div class="share-trigger-row">
-      <button class="share-trigger-btn" id="share-trigger-btn" onclick="shareScore()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-        Share your score
-      </button>
-    </div>
+    <div class="share-trigger-row" style="margin: 20px 0;">
+  <button class="share-trigger-btn" id="share-trigger-btn" onclick="shareScore()" style="
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px 32px;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+  ">
+    <!-- SVG scaled to 20x20 and stroke bumped to 2.8 for better definition -->
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18" cy="5" r="3"/>
+      <circle cx="6" cy="12" r="3"/>
+      <circle cx="18" cy="19" r="3"/>
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+    </svg>
+    Share your score
+  </button>
+</div>
 
   </div>
 </section>
@@ -2673,7 +2693,7 @@ footer {
     </a>
 
     <!-- Twitter / X -->
-    <a class="footer-social-link" href="https://x.com/creativemoneyofficial" target="_blank" rel="noopener" aria-label="X (Twitter)">
+    <a class="footer-social-link" href="https://x.com/CreativeMoneyAf" target="_blank" rel="noopener" aria-label="X (Twitter)">
       <span class="fsl-icon">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
           <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
