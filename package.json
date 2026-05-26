@@ -1,0 +1,17 @@
+{
+  "name": "creative-money-africa",
+  "version": "1.0.0",
+  "description": "Creative Business Health Score — Creative Money Africa",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "firebase-admin": "^12.0.0",
+    "dotenv": "^16.0.0",
+    "compression": "^1.7.4",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.2.0"
+  }
+}
