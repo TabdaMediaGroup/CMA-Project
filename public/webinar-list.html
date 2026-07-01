@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CMA Webinar Registrations</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Arial, sans-serif;
+    background: #0f1115;
+    color: #e8e8ec;
+    margin: 0;
+    padding: 32px 16px;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  p.sub { color: #9a9aa5; font-size: 14px; margin-top: 0; margin-bottom: 24px; }
+
+  .card {
+    background: #171921;
+    border: 1px solid #2a2d38;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  input[type="password"] {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid #2a2d38;
+    background: #0f1115;
+    color: #e8e8ec;
+    font-size: 15px;
+    margin-bottom: 12px;
+  }
+
+  button {
+    background: #7C3AED;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  button:hover { background: #6d28d9; }
+  button:disabled { background: #3f3f46; cursor: not-allowed; }
+  button.secondary {
+    background: transparent;
+    border: 1px solid #2a2d38;
+    color: #e8e8ec;
+  }
+  button.secondary:hover { background: #1e2029; }
+
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .status { font-size: 13px; color: #9a9aa5; margin-left: 4px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    font-size: 14px;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid #2a2d38;
+    white-space: nowrap;
+  }
+  th {
+    color: #9a9aa5;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  tr:hover td { background: #1c1e28; }
+  .empty { text-align: center; padding: 40px 0; color: #6b6b75; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge.new { background: #1e3a2f; color: #4ade80; }
+  .badge.existing { background: #2a2440; color: #a78bfa; }
+
+  #gate { display: flex; flex-direction: column; }
+  #app { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>CMA Webinar Registrations</h1>
+  <p class="sub">Pulls live from Firebase — <code>cma_webinar_registrations</code></p>
+
+  <!-- Passcode gate: NOT real security, just keeps casual visitors off a public page -->
+  <div class="card" id="gate">
+    <input type="password" id="passcode" placeholder="Enter passcode">
+    <button onclick="checkPasscode()">Unlock</button>
+    <div class="status" id="gate-status"></div>
+  </div>
+
+  <div id="app">
+    <div class="card">
+      <div class="toolbar">
+        <button id="fetchBtn" onclick="fetchList()">Fetch List</button>
+        <span style="color:#9a9aa5; font-size:14px;">Last</span>
+        <input type="number" id="daysInput" value="7" min="0" style="width:70px; padding:10px 12px; border-radius:8px; border:1px solid #2a2d38; background:#0f1115; color:#e8e8ec; font-size:14px;">
+        <span style="color:#9a9aa5; font-size:14px;">days</span>
+        <button class="secondary" onclick="applyDaysFilter()">Apply</button>
+        <button class="secondary" onclick="clearDaysFilter()">Show All</button>
+        <button class="secondary" id="csvBtn" onclick="downloadCsv()" disabled>Download CSV</button>
+        <span class="status" id="status">Not fetched yet</span>
+      </div>
+    </div>
+
+    <div class="card" style="overflow-x:auto;">
+      <table id="table" style="display:none;">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Status</th>
+            <th>Registered At</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty" id="emptyState">No data fetched yet — click "Fetch List" above.</div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+// ── CHANGE THIS to whatever passcode you want the manager to use ──
+const ACCESS_CODE = "cma2026";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBCUcXGz4X2BgrcVB-bOMX_VWT4Aksd574",
+  authDomain: "cma-project-b3549.firebaseapp.com",
+  projectId: "cma-project-b3549",
+  storageBucket: "cma-project-b3549.firebasestorage.app",
+  messagingSenderId: "162874853516",
+  appId: "1:162874853516:web:3bea19db419a83042a93a9",
+  measurementId: "G-KR5WME64B4"
+};
+
+let allRows = [];      // full dataset, with real Date objects
+let lastRows = [];     // currently displayed/filtered rows (used for CSV export)
+let currentDaysFilter = null;
+
+function checkPasscode() {
+  const val = document.getElementById('passcode').value;
+  if (val === ACCESS_CODE) {
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+  } else {
+    document.getElementById('gate-status').textContent = 'Wrong passcode.';
+  }
+}
+
+document.getElementById('passcode').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkPasscode();
+});
+
+document.getElementById('daysInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') applyDaysFilter();
+});
+
+function escapeHtml(str) {
+  return String(str || '').replace(/[&<>"']/g, s => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[s]));
+}
+
+function formatDate(ts) {
+  if (!ts) return '—';
+  try {
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleString();
+  } catch (e) {
+    return '—';
+  }
+}
+
+async function fetchList() {
+  const btn = document.getElementById('fetchBtn');
+  const status = document.getElementById('status');
+  btn.disabled = true;
+  status.textContent = 'Fetching…';
+
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+    const snap = await db.collection('cma_webinar_registrations')
+      .orderBy('registeredAt', 'desc')
+      .get();
+
+    allRows = [];
+
+    if (snap.empty) {
+      status.textContent = '0 registrations';
+      renderRows();
+      btn.disabled = false;
+      return;
+    }
+
+    snap.forEach(doc => {
+      const d = doc.data();
+      let dateObj = null;
+      try { dateObj = d.registeredAt && d.registeredAt.toDate ? d.registeredAt.toDate() : (d.registeredAt ? new Date(d.registeredAt) : null); } catch(e) {}
+      allRows.push({
+        name: d.name || '',
+        email: d.email || '',
+        phone: d.phone || '',
+        isExistingMember: !!d.isExistingMember,
+        dateObj: dateObj
+      });
+    });
+
+    // apply whatever filter is currently set in the days input (defaults to 7)
+    applyDaysFilter();
+  } catch (err) {
+    console.error(err);
+    status.textContent = 'Error: ' + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function applyDaysFilter() {
+  const daysVal = document.getElementById('daysInput').value;
+  const days = daysVal === '' ? null : parseInt(daysVal, 10);
+  currentDaysFilter = (days === null || isNaN(days)) ? null : days;
+  renderRows();
+}
+
+function clearDaysFilter() {
+  document.getElementById('daysInput').value = '';
+  currentDaysFilter = null;
+  renderRows();
+}
+
+function renderRows() {
+  const tbody = document.getElementById('tbody');
+  const status = document.getElementById('status');
+  tbody.innerHTML = '';
+
+  let rows = allRows;
+  if (currentDaysFilter !== null) {
+    const cutoff = Date.now() - currentDaysFilter * 24 * 60 * 60 * 1000;
+    rows = allRows.filter(r => r.dateObj && r.dateObj.getTime() >= cutoff);
+  }
+
+  lastRows = rows.map(r => ({
+    name: r.name,
+    email: r.email,
+    phone: r.phone,
+    isExistingMember: r.isExistingMember,
+    registeredAt: r.dateObj ? r.dateObj.toLocaleString() : '—'
+  }));
+
+  if (!rows.length) {
+    document.getElementById('table').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'block';
+    document.getElementById('emptyState').textContent = allRows.length
+      ? `No registrations in the selected range (out of ${allRows.length} total).`
+      : 'No registrations found.';
+    document.getElementById('csvBtn').disabled = true;
+    status.textContent = currentDaysFilter !== null
+      ? `0 of ${allRows.length} (last ${currentDaysFilter} days)`
+      : `0 registrations`;
+    return;
+  }
+
+  rows.forEach((r, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td>${escapeHtml(r.name)}</td>
+      <td>${escapeHtml(r.email)}</td>
+      <td>${escapeHtml(r.phone) || '<span style="color:#6b6b75">—</span>'}</td>
+      <td>${r.isExistingMember ? '<span class="badge existing">Existing</span>' : '<span class="badge new">New</span>'}</td>
+      <td>${r.dateObj ? r.dateObj.toLocaleString() : '—'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('table').style.display = 'table';
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('csvBtn').disabled = false;
+  status.textContent = currentDaysFilter !== null
+    ? `${rows.length} of ${allRows.length} registrations (last ${currentDaysFilter} days)`
+    : `${rows.length} registrations`;
+}
+
+function downloadCsv() {
+  if (!lastRows.length) return;
+  const header = ['Name', 'Email', 'Phone', 'Status', 'Registered At'];
+  const rows = lastRows.map(r => [
+    r.name, r.email, r.phone, r.isExistingMember ? 'Existing' : 'New', r.registeredAt
+  ]);
+  const csv = [header, ...rows]
+    .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `webinar-registrations-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
